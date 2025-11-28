@@ -9,8 +9,9 @@ use tauri::{
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
-            // Hide from dock (works in dev mode too)
+        // Hide from docks (works in dev mode too)
             #[cfg(target_os = "macos")]
             app.set_activation_policy(ActivationPolicy::Accessory);
 

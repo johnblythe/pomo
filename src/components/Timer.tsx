@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useTimerStore } from '../stores/timerStore';
 import { invoke } from '@tauri-apps/api/core';
+import { playWorkCompleteSound, playBreakCompleteSound } from '../lib/audio';
+import { initNotifications, notifyTimerComplete } from '../lib/notifications';
 
 export function Timer() {
     const { mode, status, remainingSeconds, start, pause, reset, tick, setMode } = useTimerStore();
@@ -11,6 +13,11 @@ export function Timer() {
         const s = seconds % 60;
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
+
+    // Initialize notifications on mount
+    useEffect(() => {
+        initNotifications();
+    }, []);
 
     // Countdown interval
     useEffect(() => {
@@ -32,6 +39,16 @@ export function Timer() {
     // Handle timer completion
     useEffect(() => {
         if (remainingSeconds === 0 && status === 'running') {
+            // Play sound based on completed mode
+            if (mode === 'work') {
+                playWorkCompleteSound();
+            } else {
+                playBreakCompleteSound();
+            }
+
+            // Send notification
+            notifyTimerComplete(mode);
+
             // Auto-switch modes
             if (mode === 'work') {
                 setMode('shortBreak');
