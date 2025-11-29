@@ -4,7 +4,12 @@ let db: Database | null = null;
 
 export async function getDb(): Promise<Database> {
   if (!db) {
-    db = await Database.load('sqlite:pomo.db');
+    try {
+      db = await Database.load('sqlite:pomo.db');
+    } catch (error) {
+      console.error('Failed to initialize database:', error);
+      throw new Error('Could not connect to database. Please restart the application.');
+    }
   }
   return db;
 }
@@ -17,41 +22,56 @@ export interface Session {
   completed: boolean;
 }
 
-export async function saveSession(session: Session): Promise<void> {
-  const database = await getDb();
-  await database.execute(
-    'INSERT INTO sessions (mode, duration_seconds, completed_at, completed) VALUES (?, ?, ?, ?)',
-    [session.mode, session.durationSeconds, session.completedAt, session.completed]
-  );
+export async function saveSession(
+  mode: string,
+  durationSeconds: number,
+  completed: boolean = true
+): Promise<void> {
+  try {
+    const database = await getDb();
+    await database.execute(
+      'INSERT INTO sessions (mode, duration_seconds, completed_at, completed) VALUES (?, ?, ?, ?)',
+      [mode, durationSeconds, new Date().toISOString(), completed ? 1 : 0]
+    );
+  } catch (error) {
+    console.error('Failed to save session:', { mode, durationSeconds, error });
+    throw new Error('Could not save session to database. Your progress may not be recorded.');
+  }
 }
 
 export async function getTodaySessions(): Promise<Session[]> {
-  const database = await getDb();
-  const today = new Date().toISOString().split('T')[0];
-  const sessions = await database.select<Session[]>(`SELECT * FROM sessions WHERE completed_at LIKE ?`, [today]);
-  return sessions;
+  try {
+    const database = await getDb();
+    const today = new Date().toISOString().split('T')[0];
+    const sessions = await database.select<Session[]>(
+      `SELECT id, mode, duration_seconds AS durationSeconds, completed_at AS completedAt, completed FROM sessions WHERE completed_at LIKE ?`,
+      [`${today}%`]
+    );
+    return sessions;
+  } catch (error) {
+    console.error('Failed to load today\'s sessions:', error);
+    throw new Error('Could not load today\'s statistics.');
+  }
 }
 
-export async function getWeekSessions(): Promise<Session[]> {
-  const database = await getDb();
-  const startOfWeek = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000));
-  const sessions = await database.select<Session[]>(`SELECT * FROM sessions WHERE completed_at >= ?`, [startOfWeek.toISOString()]);
-  return sessions;
-} 
-
-export async function getMonthSessions(): Promise<Session[]> {
-  const database = await getDb();
-  const startOfMonth = new Date(Date.now() - (30 * 24 * 60 * 60 * 1000));
-  const sessions = await database.select<Session[]>(`SELECT * FROM sessions WHERE completed_at >= ?`, [startOfMonth.toISOString()]);
-  return sessions;
+async function getSessionsSince(days: number, errorContext: string): Promise<Session[]> {
+  try {
+    const database = await getDb();
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const sessions = await database.select<Session[]>(
+      `SELECT id, mode, duration_seconds AS durationSeconds, completed_at AS completedAt, completed FROM sessions WHERE completed_at >= ? ORDER BY completed_at DESC`,
+      [since.toISOString()]
+    );
+    return sessions;
+  } catch (error) {
+    console.error(`Failed to load ${errorContext} sessions:`, error);
+    throw new Error(`Could not load ${errorContext} statistics.`);
+  }
 }
 
-export async function getYearSessions(): Promise<Session[]> {
-  const database = await getDb();
-  const startOfYear = new Date(Date.now() - (365 * 24 * 60 * 60 * 1000));
-  const sessions = await database.select<Session[]>(`SELECT * FROM sessions WHERE completed_at >= ?`, [startOfYear.toISOString()]);
-  return sessions;
-}
+export const getWeekSessions = () => getSessionsSince(7, 'week\'s');
+export const getMonthSessions = () => getSessionsSince(30, 'month\'s');
+export const getYearSessions = () => getSessionsSince(365, 'year\'s');
 
 export async function getTotalSessionDuration(): Promise<number> {
   const database = await getDb();

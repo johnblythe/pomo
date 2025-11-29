@@ -37,32 +37,39 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     isLoaded: false,
 
     setDuration: async (mode, minutes) => {
-        const clamped = Math.max(1, Math.min(mode === 'work' ? 60 : 30, minutes));
+        const maxValues = { work: 60, shortBreak: 30, longBreak: 60 };
+        const clamped = Math.max(1, Math.min(maxValues[mode], minutes));
         const newDurations = { ...get().durations, [mode]: clamped };
         set({ durations: newDurations });
 
-        const s = await getStore();
-        await s.set('durations', newDurations);
+        try {
+            const s = await getStore();
+            await s.set('durations', newDurations);
+        } catch (error) {
+            console.error('Failed to save duration settings:', error);
+            // Settings changed in UI but won't persist - user will see on next restart
+        }
     },
 
     resetToDefaults: async () => {
         set({ durations: { ...DEFAULT_DURATIONS } });
-        const s = await getStore();
-        await s.set('durations', DEFAULT_DURATIONS);
+        try {
+            const s = await getStore();
+            await s.set('durations', DEFAULT_DURATIONS);
+        } catch (error) {
+            console.error('Failed to save default settings:', error);
+            // Reset shown in UI but won't persist
+        }
     },
 
     loadSettings: async () => {
         try {
             const s = await getStore();
             const saved = await s.get<DurationSettings>('durations');
-            if (saved) {
-                set({ durations: saved, isLoaded: true });
-            } else {
-                set({ isLoaded: true });
-            }
-        } catch (e) {
-            console.error('Failed to load settings:', e);
-            set({ isLoaded: true });
+            set({ durations: saved ?? DEFAULT_DURATIONS, isLoaded: true });
+        } catch (error) {
+            console.warn('Settings file not found or corrupted, using defaults:', error);
+            set({ durations: DEFAULT_DURATIONS, isLoaded: true });
         }
     },
 }));

@@ -249,6 +249,13 @@
   padding: 20px;
 }
 
+.error {
+  text-align: center;
+  color: #ff6b6b;
+  padding: 20px;
+  font-size: 14px;
+}
+
 .session-list {
   display: flex;
   flex-direction: column;

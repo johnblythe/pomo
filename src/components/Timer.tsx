@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTimerStore } from '../stores/timerStore';
 import { invoke } from '@tauri-apps/api/core';
 import { playWorkCompleteSound, playBreakCompleteSound } from '../lib/audio';
@@ -8,6 +8,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 
 export function Timer() {
     const { mode, status, remainingSeconds, start, pause, reset, setMode } = useTimerStore();
+    const [shouldAutoStart, setShouldAutoStart] = useState(false);
 
     // Format seconds as MM:SS
     const formatTime = (seconds: number): string => {
@@ -74,22 +75,35 @@ export function Timer() {
             const { durations } = useSettingsStore.getState();
             saveSession(mode, durations[mode] * 60).catch(console.error);
 
-            // Auto-switch modes and auto-start work after break
+            // Auto-switch modes
             if (mode === 'work') {
                 setMode('shortBreak');
             } else {
                 setMode('work');
-                // Auto-start work session after break
-                setTimeout(() => start(), 100);
+                setShouldAutoStart(true);
             }
         }
-    }, [remainingSeconds, status, mode, setMode, start]);
+    }, [remainingSeconds, status, mode, setMode]);
+
+    // Auto-start work after mode switches to work (reliable, no race condition)
+    useEffect(() => {
+        if (shouldAutoStart && mode === 'work' && status === 'idle') {
+            start();
+            setShouldAutoStart(false);
+        }
+    }, [shouldAutoStart, mode, status, start]);
 
     const modeLabels = {
         work: 'Focus',
         shortBreak: 'Short Break',
         longBreak: 'Long Break',
     };
+
+    const modes = [
+        { key: 'work' as const, label: 'Work' },
+        { key: 'shortBreak' as const, label: 'Short' },
+        { key: 'longBreak' as const, label: 'Long' },
+    ];
 
     return (
         <div className="timer">
@@ -106,24 +120,15 @@ export function Timer() {
             </div>
 
             <div className="mode-switcher">
-                <button
-                    className={mode === 'work' ? 'active' : ''}
-                    onClick={() => setMode('work')}
-                >
-                    Work
-                </button>
-                <button
-                    className={mode === 'shortBreak' ? 'active' : ''}
-                    onClick={() => setMode('shortBreak')}
-                >
-                    Short
-                </button>
-                <button
-                    className={mode === 'longBreak' ? 'active' : ''}
-                    onClick={() => setMode('longBreak')}
-                >
-                    Long
-                </button>
+                {modes.map(({ key, label }) => (
+                    <button
+                        key={key}
+                        className={mode === key ? 'active' : ''}
+                        onClick={() => setMode(key)}
+                    >
+                        {label}
+                    </button>
+                ))}
             </div>
         </div>
     );

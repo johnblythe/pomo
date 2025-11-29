@@ -9,6 +9,7 @@ export function Stats({ onClose }: Props) {
     const [todaySessions, setTodaySessions] = useState<Session[]>([]);
     const [weekSessions, setWeekSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         Promise.all([
@@ -20,6 +21,7 @@ export function Stats({ onClose }: Props) {
             setLoading(false);
         }).catch(err => {
             console.error('Failed to load stats:', err);
+            setError(err.message || 'Could not load statistics. Please try again.');
             setLoading(false);
         });
     }, []);
@@ -27,11 +29,10 @@ export function Stats({ onClose }: Props) {
     const calculateStats = (sessions: Session[]) => {
         const workSessions = sessions.filter(s => s.mode === 'work' && s.completed);
         const totalMinutes = Math.floor(
-            sessions.reduce((sum, s) => sum + s.duration_seconds, 0) / 60
+            sessions.reduce((sum, s) => sum + s.durationSeconds, 0) / 60
         );
         return {
             count: workSessions.length,
-            totalMinutes,
             hours: Math.floor(totalMinutes / 60),
             minutes: totalMinutes % 60,
         };
@@ -52,6 +53,23 @@ export function Stats({ onClose }: Props) {
         );
     }
 
+    if (error) {
+        return (
+            <div className="stats">
+                <div className="stats-header">
+                    <h2>Stats</h2>
+                    <button className="close-btn" onClick={onClose}>×</button>
+                </div>
+                <div className="error">{error}</div>
+            </div>
+        );
+    }
+
+    const statSections = [
+        { title: 'Today', stats: todayStats },
+        { title: 'This Week', stats: weekStats },
+    ];
+
     return (
         <div className="stats">
             <div className="stats-header">
@@ -59,35 +77,22 @@ export function Stats({ onClose }: Props) {
                 <button className="close-btn" onClick={onClose}>×</button>
             </div>
 
-            <div className="stats-section">
-                <h3>Today</h3>
-                <div className="stat-row">
-                    <span className="stat-label">Sessions</span>
-                    <span className="stat-value">{todayStats.count}</span>
+            {statSections.map(({ title, stats }) => (
+                <div key={title} className="stats-section">
+                    <h3>{title}</h3>
+                    <div className="stat-row">
+                        <span className="stat-label">Sessions</span>
+                        <span className="stat-value">{stats.count}</span>
+                    </div>
+                    <div className="stat-row">
+                        <span className="stat-label">Focus time</span>
+                        <span className="stat-value">
+                            {stats.hours > 0 && `${stats.hours}h `}
+                            {stats.minutes}m
+                        </span>
+                    </div>
                 </div>
-                <div className="stat-row">
-                    <span className="stat-label">Focus time</span>
-                    <span className="stat-value">
-                        {todayStats.hours > 0 && `${todayStats.hours}h `}
-                        {todayStats.minutes}m
-                    </span>
-                </div>
-            </div>
-
-            <div className="stats-section">
-                <h3>This Week</h3>
-                <div className="stat-row">
-                    <span className="stat-label">Sessions</span>
-                    <span className="stat-value">{weekStats.count}</span>
-                </div>
-                <div className="stat-row">
-                    <span className="stat-label">Focus time</span>
-                    <span className="stat-value">
-                        {weekStats.hours > 0 && `${weekStats.hours}h `}
-                        {weekStats.minutes}m
-                    </span>
-                </div>
-            </div>
+            ))}
 
             {todaySessions.length > 0 && (
                 <div className="stats-section">
@@ -101,7 +106,7 @@ export function Stats({ onClose }: Props) {
                                     {session.mode === 'work' ? 'Focus' : 'Break'}
                                 </span>
                                 <span className="session-time">
-                                    {Math.floor(session.duration_seconds / 60)}m
+                                    {Math.floor(session.durationSeconds / 60)}m
                                 </span>
                             </div>
                         ))}
