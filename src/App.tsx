@@ -40,7 +40,7 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app" data-tauri-drag-region>
       {view === 'settings' && <Settings onClose={() => setView('timer')} />}
       {view === 'stats' && <Stats onClose={() => setView('timer')} />}
       {view === 'timer' && (

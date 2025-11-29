@@ -9,10 +9,13 @@
     "core:window:allow-show",
     "core:window:allow-set-focus",
     "core:window:allow-is-visible",
+    "core:window:allow-start-dragging",
     "core:event:default",
     "notification:default",
     "opener:default",
     "store:default",
-    "sql:default"
+    "sql:default",
+    "sql:allow-execute",
+    "sql:allow-select"
   ]
 }
