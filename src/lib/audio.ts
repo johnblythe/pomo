@@ -21,7 +21,7 @@ export function playCompletionSound() {
   // Configure volume envelope (fade in/out for smoothness)
   const now = audioContext.currentTime;
   gainNode.gain.setValueAtTime(0, now);
-  gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
+  gainNode.gain.linearRampToValueAtTime(0.45, now + 0.01); // Louder (was 0.3)
   gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
 
   // Play for 0.5 seconds

@@ -6,10 +6,35 @@ use tauri::{
     Manager,
     ActivationPolicy,
 };
+use tauri_plugin_sql::{Migration, MigrationKind};
+
+fn migrations() -> Vec<Migration> {
+    vec![
+        Migration {
+            version: 1,
+            description: "create sessions table",
+            sql: r#"
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    mode TEXT NOT NULL,
+                    duration_seconds INTEGER NOT NULL,
+                    completed_at TEXT NOT NULL,
+                    completed INTEGER NOT NULL DEFAULT 1
+                );
+                CREATE INDEX IF NOT EXISTS idx_sessions_completed_at ON sessions(completed_at);
+            "#,
+            kind: MigrationKind::Up,
+        }
+    ]
+}
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_sql::Builder::new()
+        .add_migrations("sqlite:pomo.db", migrations())
+            .build())
         .setup(|app| {
         // Hide from docks (works in dev mode too)
             #[cfg(target_os = "macos")]

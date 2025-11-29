@@ -11,6 +11,8 @@
     "core:window:allow-is-visible",
     "core:event:default",
     "notification:default",
-    "opener:default"
+    "opener:default",
+    "store:default",
+    "sql:default"
   ]
 }

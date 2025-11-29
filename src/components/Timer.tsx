@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTimerStore } from '../stores/timerStore';
 import { invoke } from '@tauri-apps/api/core';
 import { playWorkCompleteSound, playBreakCompleteSound } from '../lib/audio';
 import { initNotifications, notifyTimerComplete } from '../lib/notifications';
 
 export function Timer() {
-    const { mode, status, remainingSeconds, start, pause, reset, tick, setMode } = useTimerStore();
+    const { mode, status, remainingSeconds, start, pause, reset, setMode } = useTimerStore();
 
     // Format seconds as MM:SS
     const formatTime = (seconds: number): string => {
@@ -19,16 +19,35 @@ export function Timer() {
         initNotifications();
     }, []);
 
-    // Countdown interval
+    // Track when timer started and initial seconds for accurate timing
+    const startTimeRef = useRef<number | null>(null);
+    const startSecondsRef = useRef<number>(0);
+
+    // Countdown using timestamps (immune to browser throttling)
     useEffect(() => {
-        if (status !== 'running') return;
+        if (status !== 'running') {
+            startTimeRef.current = null;
+            return;
+        }
+
+        // Capture start time and seconds when timer begins
+        if (startTimeRef.current === null) {
+            startTimeRef.current = Date.now();
+            startSecondsRef.current = remainingSeconds;
+        }
 
         const interval = setInterval(() => {
-            tick();
-        }, 1000);
+            const elapsed = Math.floor((Date.now() - startTimeRef.current!) / 1000);
+            const newRemaining = Math.max(0, startSecondsRef.current - elapsed);
+
+            const store = useTimerStore.getState();
+            if (store.remainingSeconds !== newRemaining) {
+                useTimerStore.setState({ remainingSeconds: newRemaining });
+            }
+        }, 100); // Check more frequently, but update based on real elapsed time
 
         return () => clearInterval(interval);
-    }, [status, tick]);
+    }, [status]);
 
     // Update menu bar title when time changes
     useEffect(() => {
@@ -49,14 +68,16 @@ export function Timer() {
             // Send notification
             notifyTimerComplete(mode);
 
-            // Auto-switch modes
+            // Auto-switch modes and auto-start work after break
             if (mode === 'work') {
                 setMode('shortBreak');
             } else {
                 setMode('work');
+                // Auto-start work session after break
+                setTimeout(() => start(), 100);
             }
         }
-    }, [remainingSeconds, status, mode, setMode]);
+    }, [remainingSeconds, status, mode, setMode, start]);
 
     const modeLabels = {
         work: 'Focus',
