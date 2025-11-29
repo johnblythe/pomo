@@ -11,7 +11,7 @@ type View = 'timer' | 'settings' | 'stats';
 
 function App() {
   const [view, setView] = useState<View>('timer');
-  const { loadSettings, isLoaded } = useSettingsStore();
+  const { loadSettings, isLoaded, theme } = useSettingsStore();
   const syncWithSettings = useTimerStore((s) => s.syncWithSettings);
 
   // Load settings on mount
@@ -40,22 +40,22 @@ function App() {
   }
 
   return (
-    <div className="app" data-tauri-drag-region>
+    <div className="app" data-tauri-drag-region data-theme={theme}>
+      {/* Timer always mounted to keep countdown running */}
+      <div style={{ display: view === 'timer' ? 'contents' : 'none' }}>
+        <Timer />
+        <div className="nav-buttons">
+          <button className="nav-btn" onClick={() => setView('stats')}>
+            📊
+          </button>
+          <button className="nav-btn" onClick={() => setView('settings')}>
+            ⚙
+          </button>
+        </div>
+      </div>
+
       {view === 'settings' && <Settings onClose={() => setView('timer')} />}
       {view === 'stats' && <Stats onClose={() => setView('timer')} />}
-      {view === 'timer' && (
-        <>
-          <Timer />
-          <div className="nav-buttons">
-            <button className="nav-btn" onClick={() => setView('stats')}>
-              📊
-            </button>
-            <button className="nav-btn" onClick={() => setView('settings')}>
-              ⚙
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }

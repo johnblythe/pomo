@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { load, Store } from '@tauri-apps/plugin-store';
 
+export type Theme = 'glass' | 'warmth' | 'brutalist';
+
 export interface DurationSettings {
     work: number;        // minutes
     shortBreak: number;  // minutes
@@ -9,10 +11,12 @@ export interface DurationSettings {
 
 interface SettingsState {
     durations: DurationSettings;
+    theme: Theme;
     isLoaded: boolean;
 
     // Actions
     setDuration: (mode: keyof DurationSettings, minutes: number) => void;
+    setTheme: (theme: Theme) => void;
     resetToDefaults: () => void;
     loadSettings: () => Promise<void>;
 }
@@ -22,6 +26,8 @@ const DEFAULT_DURATIONS: DurationSettings = {
     shortBreak: 5,
     longBreak: 15,
 };
+
+const DEFAULT_THEME: Theme = 'glass';
 
 let store: Store | null = null;
 
@@ -34,6 +40,7 @@ const getStore = async (): Promise<Store> => {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
     durations: { ...DEFAULT_DURATIONS },
+    theme: DEFAULT_THEME,
     isLoaded: false,
 
     setDuration: async (mode, minutes) => {
@@ -51,11 +58,22 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
     },
 
+    setTheme: async (theme) => {
+        set({ theme });
+        try {
+            const s = await getStore();
+            await s.set('theme', theme);
+        } catch (error) {
+            console.error('Failed to save theme:', error);
+        }
+    },
+
     resetToDefaults: async () => {
-        set({ durations: { ...DEFAULT_DURATIONS } });
+        set({ durations: { ...DEFAULT_DURATIONS }, theme: DEFAULT_THEME });
         try {
             const s = await getStore();
             await s.set('durations', DEFAULT_DURATIONS);
+            await s.set('theme', DEFAULT_THEME);
         } catch (error) {
             console.error('Failed to save default settings:', error);
             // Reset shown in UI but won't persist
@@ -65,11 +83,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     loadSettings: async () => {
         try {
             const s = await getStore();
-            const saved = await s.get<DurationSettings>('durations');
-            set({ durations: saved ?? DEFAULT_DURATIONS, isLoaded: true });
+            const savedDurations = await s.get<DurationSettings>('durations');
+            const savedTheme = await s.get<Theme>('theme');
+            set({
+                durations: savedDurations ?? DEFAULT_DURATIONS,
+                theme: savedTheme ?? DEFAULT_THEME,
+                isLoaded: true
+            });
         } catch (error) {
             console.warn('Settings file not found or corrupted, using defaults:', error);
-            set({ durations: DEFAULT_DURATIONS, isLoaded: true });
+            set({ durations: DEFAULT_DURATIONS, theme: DEFAULT_THEME, isLoaded: true });
         }
     },
 }));
