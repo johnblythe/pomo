@@ -12,6 +12,12 @@ All notable changes to this project will be documented in this file.
 - Database wrapper utilities (`src/lib/db.ts`)
 - Auto-start work session after break ends
 - Louder work completion sound (50% increase)
+- **Stats view**: Track and visualize completed sessions
+  - Today's session count and focus time
+  - This week's session count and focus time
+  - Recent sessions list
+- Session tracking on timer completion (saves to SQLite)
+- Navigation with stats (📊) and settings (⚙) buttons
 
 ### Fixed
 - Timer running at wrong speed when window hidden (browser throttling)

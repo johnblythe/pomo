@@ -3,6 +3,8 @@ import { useTimerStore } from '../stores/timerStore';
 import { invoke } from '@tauri-apps/api/core';
 import { playWorkCompleteSound, playBreakCompleteSound } from '../lib/audio';
 import { initNotifications, notifyTimerComplete } from '../lib/notifications';
+import { saveSession } from '../lib/db';
+import { useSettingsStore } from '../stores/settingsStore';
 
 export function Timer() {
     const { mode, status, remainingSeconds, start, pause, reset, setMode } = useTimerStore();
@@ -67,6 +69,10 @@ export function Timer() {
 
             // Send notification
             notifyTimerComplete(mode);
+
+            // Save session to database
+            const { durations } = useSettingsStore.getState();
+            saveSession(mode, durations[mode] * 60).catch(console.error);
 
             // Auto-switch modes and auto-start work after break
             if (mode === 'work') {
