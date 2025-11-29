@@ -73,6 +73,19 @@ export const getWeekSessions = () => getSessionsSince(7, 'week\'s');
 export const getMonthSessions = () => getSessionsSince(30, 'month\'s');
 export const getYearSessions = () => getSessionsSince(365, 'year\'s');
 
+export async function getAllTimeSessions(): Promise<Session[]> {
+  try {
+    const database = await getDb();
+    const sessions = await database.select<Session[]>(
+      `SELECT id, mode, duration_seconds AS durationSeconds, completed_at AS completedAt, completed FROM sessions ORDER BY completed_at DESC`
+    );
+    return sessions;
+  } catch (error) {
+    console.error('Failed to load all-time sessions:', error);
+    throw new Error('Could not load all-time statistics.');
+  }
+}
+
 export async function getTotalSessionDuration(): Promise<number> {
   const database = await getDb();
   const result = await database.select<Array<{ sum: number | null }>>('SELECT SUM(duration_seconds) as sum FROM sessions');

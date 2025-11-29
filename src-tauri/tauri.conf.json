@@ -14,10 +14,10 @@
       {
         "label": "main",
         "title": "pomo",
-        "width": 300,
-        "height": 200,
+        "width": 380,
+        "height": 280,
         "visible": false,
-        "resizable": false,
+        "resizable": true,
         "decorations": false,
         "alwaysOnTop": true,
         "skipTaskbar": true

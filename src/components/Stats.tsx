@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getTodaySessions, getWeekSessions, Session } from '../lib/db';
+import { getTodaySessions, getWeekSessions, getAllTimeSessions, Session } from '../lib/db';
 
 interface Props {
     onClose: () => void;
@@ -8,16 +8,19 @@ interface Props {
 export function Stats({ onClose }: Props) {
     const [todaySessions, setTodaySessions] = useState<Session[]>([]);
     const [weekSessions, setWeekSessions] = useState<Session[]>([]);
+    const [allTimeSessions, setAllTimeSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         Promise.all([
             getTodaySessions(),
-            getWeekSessions()
-        ]).then(([today, week]) => {
+            getWeekSessions(),
+            getAllTimeSessions()
+        ]).then(([today, week, allTime]) => {
             setTodaySessions(today);
             setWeekSessions(week);
+            setAllTimeSessions(allTime);
             setLoading(false);
         }).catch(err => {
             console.error('Failed to load stats:', err);
@@ -40,6 +43,7 @@ export function Stats({ onClose }: Props) {
 
     const todayStats = calculateStats(todaySessions);
     const weekStats = calculateStats(weekSessions);
+    const allTimeStats = calculateStats(allTimeSessions);
 
     if (loading) {
         return (
@@ -68,6 +72,7 @@ export function Stats({ onClose }: Props) {
     const statSections = [
         { title: 'Today', stats: todayStats },
         { title: 'This Week', stats: weekStats },
+        { title: 'All Time', stats: allTimeStats },
     ];
 
     return (
