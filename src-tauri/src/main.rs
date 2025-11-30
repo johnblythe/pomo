@@ -4,9 +4,11 @@
 use tauri::{
     tray::TrayIconBuilder,
     Manager,
+    Emitter,
     ActivationPolicy,
 };
 use tauri_plugin_sql::{Migration, MigrationKind};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
 fn migrations() -> Vec<Migration> {
     vec![
@@ -35,10 +37,27 @@ fn main() {
         .plugin(tauri_plugin_sql::Builder::new()
         .add_migrations("sqlite:pomo.db", migrations())
             .build())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
         // Hide from docks (works in dev mode too)
             #[cfg(target_os = "macos")]
             app.set_activation_policy(ActivationPolicy::Accessory);
+
+            // Register global shortcuts
+            let work_shortcut = "Ctrl+Alt+Shift+W".parse::<Shortcut>().unwrap();
+            app.global_shortcut().on_shortcut(work_shortcut, |app, _shortcut, _event| {
+                let _ = app.emit("shortcut-startWork", ());
+            })?;
+
+            let pause_shortcut = "Ctrl+Alt+Shift+P".parse::<Shortcut>().unwrap();
+            app.global_shortcut().on_shortcut(pause_shortcut, |app, _shortcut, _event| {
+                let _ = app.emit("shortcut-pause", ());
+            })?;
+
+            let break_shortcut = "Ctrl+Alt+Shift+B".parse::<Shortcut>().unwrap();
+            app.global_shortcut().on_shortcut(break_shortcut, |app, _shortcut, _event| {
+                let _ = app.emit("shortcut-startBreak", ());
+            })?;
 
             // Build tray icon with explicit ID
             let _tray = TrayIconBuilder::with_id("main")

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTimerStore } from '../stores/timerStore';
+import type { TimerStatus } from '../stores/timerStore';
 import { invoke } from '@tauri-apps/api/core';
 import { playWorkCompleteSound, playBreakCompleteSound } from '../lib/audio';
 import { initNotifications, notifyTimerComplete } from '../lib/notifications';
@@ -30,9 +31,22 @@ export function Timer() {
     // Track when timer started and initial seconds for accurate timing
     const startTimeRef = useRef<number | null>(null);
     const startSecondsRef = useRef<number>(0);
+    const intervalRef = useRef<number | null>(null);
+    const statusRef = useRef<TimerStatus>(status);
+
+    // Keep statusRef in sync with current status
+    useEffect(() => {
+        statusRef.current = status;
+    }, [status]);
 
     // Countdown using timestamps (immune to browser throttling)
     useEffect(() => {
+        // Clear existing interval first (prevents race condition)
+        if (intervalRef.current !== null) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+
         if (status !== 'running') {
             startTimeRef.current = null;
             return;
@@ -44,7 +58,12 @@ export function Timer() {
             startSecondsRef.current = remainingSeconds;
         }
 
-        const interval = setInterval(() => {
+        intervalRef.current = setInterval(() => {
+            // Guard: only update if still running
+            if (statusRef.current !== 'running') {
+                return;
+            }
+
             const elapsed = Math.floor((Date.now() - startTimeRef.current!) / 1000);
             const newRemaining = Math.max(0, startSecondsRef.current - elapsed);
 
@@ -54,7 +73,12 @@ export function Timer() {
             }
         }, 100); // Check more frequently, but update based on real elapsed time
 
-        return () => clearInterval(interval);
+        return () => {
+            if (intervalRef.current !== null) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        };
     }, [status]);
 
     // Update menu bar title when time changes
@@ -84,6 +108,15 @@ export function Timer() {
             saveSession(mode, durations[mode] * 60)
                 .then(() => console.log('[Timer] Session saved successfully'))
                 .catch(err => console.error('[Timer] Failed to save session:', err));
+
+            // Track work sessions for smart break selection
+            if (mode === 'work') {
+                const { incrementWorkSession } = useSettingsStore.getState();
+                incrementWorkSession();
+            } else if (mode === 'longBreak') {
+                const { resetWorkSessionCount } = useSettingsStore.getState();
+                resetWorkSessionCount();
+            }
 
             // Auto-switch modes and trigger auto-start
             if (mode === 'work') {

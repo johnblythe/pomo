@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { useSettingsStore } from './settingsStore';
 
 export type TimerMode = 'work' | 'shortBreak' | 'longBreak';
-type TimerStatus = 'idle' | 'running' | 'paused';
+export type TimerStatus = 'idle' | 'running' | 'paused';
 
 interface TimerState {
   mode: TimerMode;

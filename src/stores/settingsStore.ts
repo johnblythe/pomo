@@ -12,11 +12,14 @@ export interface DurationSettings {
 interface SettingsState {
     durations: DurationSettings;
     theme: Theme;
+    workSessionCount: number;
     isLoaded: boolean;
 
     // Actions
     setDuration: (mode: keyof DurationSettings, minutes: number) => void;
     setTheme: (theme: Theme) => void;
+    incrementWorkSession: () => Promise<void>;
+    resetWorkSessionCount: () => Promise<void>;
     resetToDefaults: () => void;
     loadSettings: () => Promise<void>;
 }
@@ -41,6 +44,7 @@ const getStore = async (): Promise<Store> => {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
     durations: { ...DEFAULT_DURATIONS },
     theme: DEFAULT_THEME,
+    workSessionCount: 0,
     isLoaded: false,
 
     setDuration: async (mode, minutes) => {
@@ -68,6 +72,27 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
     },
 
+    incrementWorkSession: async () => {
+        const count = get().workSessionCount + 1;
+        set({ workSessionCount: count });
+        try {
+            const s = await getStore();
+            await s.set('workSessionCount', count);
+        } catch (error) {
+            console.error('Failed to save work session count:', error);
+        }
+    },
+
+    resetWorkSessionCount: async () => {
+        set({ workSessionCount: 0 });
+        try {
+            const s = await getStore();
+            await s.set('workSessionCount', 0);
+        } catch (error) {
+            console.error('Failed to reset work session count:', error);
+        }
+    },
+
     resetToDefaults: async () => {
         set({ durations: { ...DEFAULT_DURATIONS }, theme: DEFAULT_THEME });
         try {
@@ -85,14 +110,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             const s = await getStore();
             const savedDurations = await s.get<DurationSettings>('durations');
             const savedTheme = await s.get<Theme>('theme');
+            const savedCount = await s.get<number>('workSessionCount');
             set({
                 durations: savedDurations ?? DEFAULT_DURATIONS,
                 theme: savedTheme ?? DEFAULT_THEME,
+                workSessionCount: savedCount ?? 0,
                 isLoaded: true
             });
         } catch (error) {
             console.warn('Settings file not found or corrupted, using defaults:', error);
-            set({ durations: DEFAULT_DURATIONS, theme: DEFAULT_THEME, isLoaded: true });
+            set({ durations: DEFAULT_DURATIONS, theme: DEFAULT_THEME, workSessionCount: 0, isLoaded: true });
         }
     },
 }));
